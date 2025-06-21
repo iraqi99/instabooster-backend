@@ -17,7 +17,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 // Routes
 const userRoutes = require('./routes/user');
-app.use('/instagram/api', userRoutes);
+app.use('/api', userRoutes);
 
 
 app.get("/", (req, res) => {
