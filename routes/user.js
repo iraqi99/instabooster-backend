@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
+// Default endpoint just to verify route is working
+router.get('/', (req, res) => {
+  res.send('📡 Instagram API is working!');
+});
+
 // Get all users
 router.get('/users', async (req, res) => {
   const users = await User.find();
