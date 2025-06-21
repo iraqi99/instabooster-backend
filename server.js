@@ -19,7 +19,13 @@ mongoose.connect(process.env.MONGODB_URI, {
 const userRoutes = require('./routes/user');
 app.use('/instagram/api', userRoutes);
 
-// Start server
+
+app.get("/", (req, res) => {
+  res.send("✅ InstaBooster API is live!");
+});
+
+
+// Start server[
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
