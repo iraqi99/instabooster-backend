@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const User = require('../models/User');
 const Feed = require('../models/Feed');
@@ -7,19 +9,40 @@ const Follow = require('../models/Follow');
 const Package = require('../models/Package');
 const Boost = require('../models/Boost');
 
-// 👤 تسجيل الدخول
+// ✅ تسجيل مستخدم جديد
+router.post('/user/signup', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password)
+      return res.status(400).json({ error: 'Username and password are required' });
+
+    const existing = await User.findOne({ username });
+    if (existing)
+      return res.status(409).json({ error: 'Username is already taken' });
+
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({ username, password: hashed });
+    res.json({ success: true, userId: user._id });
+  } catch (err) {
+    console.error("Signup Error:", err);
+    res.status(500).json({ success: false, error: 'Signup failed' });
+  }
+});
+
+// 🔐 تسجيل الدخول
 router.post('/user/login', async (req, res) => {
   try {
-    const { username } = req.body;
-    if (!username) return res.status(400).json({ error: 'Username is required' });
+    const { username, password } = req.body;
+    if (!username || !password)
+      return res.status(400).json({ error: 'Username and password are required' });
 
-    let user = await User.findOne({ username });
-    if (!user) {
-      user = new User({ username });
-      await user.save();
+    const user = await User.findOne({ username });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    res.json({ success: true, user });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ success: true, token, user });
   } catch (err) {
     console.error("Login Error:", err);
     res.status(500).json({ success: false, error: 'Login failed' });
