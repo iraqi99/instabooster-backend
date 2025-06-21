@@ -1,132 +1,124 @@
 const express = require('express');
 const router = express.Router();
+
 const User = require('../models/User');
+const Feed = require('../models/Feed');
+const Follow = require('../models/Follow');
+const Package = require('../models/Package');
+const Boost = require('../models/Boost');
 
 // 👤 تسجيل الدخول
 router.post('/user/login', async (req, res) => {
-  const { username } = req.body;
-  if (!username) return res.status(400).json({ error: 'Username is required' });
+  try {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: 'Username is required' });
 
-  let user = await User.findOne({ username });
-  if (!user) {
-    user = new User({ username });
-    await user.save();
+    let user = await User.findOne({ username });
+    if (!user) {
+      user = new User({ username });
+      await user.save();
+    }
+
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error("Login Error:", err);
+    res.status(500).json({ success: false, error: 'Login failed' });
   }
-
-  res.json({ success: true, user });
 });
 
 // 👤 جلب بيانات المستخدم
 router.post('/user/profile', async (req, res) => {
-  const { userId } = req.body;
-  const user = await User.findById(userId);
-  if (!user) return res.status(404).json({ error: 'User not found' });
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
 
-  res.json({ success: true, user });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error("Profile Error:", err);
+    res.status(500).json({ success: false, error: 'Failed to fetch profile' });
+  }
 });
 
 // 📄 جلب المنشورات (feeds)
 router.post('/user/feeds', async (req, res) => {
-  const feeds = [
-    {
-      id: '1',
-      username: 'user1',
-      followers: 1234,
-      followings: 800,
-      stars: 0,
-      pk: '1',
-      bio: "I'm a test user",
-      fullName: 'Test User One',
-      isPrivate: false,
-      isVerified: false,
-      isFirstLogin: false,
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      username: 'user2',
-      followers: 5678,
-      followings: 1200,
-      stars: 0,
-      pk: '2',
-      bio: "Another test user",
-      fullName: 'Test User Two',
-      isPrivate: false,
-      isVerified: false,
-      isFirstLogin: false,
-      createdAt: new Date().toISOString(),
-    }
-  ];
-  res.json({ success: true, data: feeds });
+  try {
+    const feeds = await Feed.find().sort({ createdAt: -1 }).limit(30);
+    res.json({ success: true, data: feeds });
+  } catch (err) {
+    console.error("Feeds Error:", err);
+    res.status(500).json({ success: false, error: 'Failed to fetch feeds' });
+  }
 });
 
 // ✅ تنفيذ عملية Follow
 router.post('/user/follow', async (req, res) => {
-  const { userId, feedId } = req.body;
-  if (!userId || !feedId) return res.status(400).json({ error: 'Missing parameters' });
+  try {
+    const { userId, feedId } = req.body;
+    if (!userId || !feedId) return res.status(400).json({ error: 'Missing parameters' });
 
-  res.json({
-    success: true,
-    data: {
-      id: "dummyFollowId",
+    const follow = new Follow({
       userId,
       feedId,
       reward: 1,
-      createdAt: new Date().toISOString(),
-      __v: 0
-    }
-  });
+    });
+
+    await follow.save();
+    res.json({ success: true, data: follow });
+  } catch (err) {
+    console.error("Follow Error:", err);
+    res.status(500).json({ success: false, error: 'Failed to follow' });
+  }
 });
 
-// 📦 حزم وهمية
+// 📦 جلب الحزم
 router.post('/user/packages', async (req, res) => {
-  res.json({
-    data: [
-      {
-        id: '1',
-        packageStars: 10,
-        packageId: 'pkg1',
-        packageName: 'Mini Pack',
-        packagePlatform: 'android',
-        packagePricing: 0,
-        packsBought: 0,
-        createdAt: new Date().toISOString(),
-        __v: 0
-      },
-      {
-        id: '2',
-        packageStars: 25,
-        packageId: 'pkg2',
-        packageName: 'Mega Pack',
-        packagePlatform: 'android',
-        packagePricing: 0,
-        packsBought: 0,
-        createdAt: new Date().toISOString(),
-        __v: 0
-      }
-    ]
-  });
+  try {
+    const packages = await Package.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: packages });
+  } catch (err) {
+    console.error("Packages Error:", err);
+    res.status(500).json({ success: false, error: 'Failed to fetch packages' });
+  }
 });
 
-// 🎁 Boost وهمي
+// 🎁 تنفيذ Boost
 router.post('/user/boost', async (req, res) => {
-  res.json({ success: true, message: "Boosted!" });
+  try {
+    const { userId, boostStar, boostOfFollower } = req.body;
+    if (!userId || boostStar == null || boostOfFollower == null) {
+      return res.status(400).json({ error: 'Missing boost parameters' });
+    }
+
+    const boost = new Boost({
+      userId,
+      boostStar,
+      boostOfFollower,
+      boostUsed: 0,
+    });
+
+    await boost.save();
+    res.json({ success: true, data: boost });
+  } catch (err) {
+    console.error("Boost Error:", err);
+    res.status(500).json({ success: false, error: 'Failed to boost' });
+  }
 });
 
 // 🔁 استعلام عن boost
 router.post('/user/getBoost', async (req, res) => {
-  res.json({
-    data: [
-      {
-        id: '1',
-        boostStar: 3,
-        boostOfFollower: 30,
-        boostUsed: 0,
-        createdAt: new Date().toISOString(),
-        __v: 0
-      }
-    ]
-  });
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+
+    const boosts = await Boost.find({ userId }).sort({ createdAt: -1 });
+    res.json({ success: true, data: boosts });
+  } catch (err) {
+    console.error("GetBoost Error:", err);
+    res.status(500).json({ success: false, error: 'Failed to get boosts' });
+  }
 });
 
 module.exports = router;
